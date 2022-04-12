@@ -10,16 +10,14 @@ class CarMarket:
         if f"{seller.name} {seller.surname}" not in CarMarket.existing_car:
             CarMarket.existing_car[f"{seller.name} {seller.surname}"] = []
         CarMarket.existing_car[f"{seller.name} {seller.surname}"].append([car.name, car.price])
-
         return CarMarket.existing_car
 
     def __remove_car(self, car):
         CarMarket.del_car.append(CarMarket.existing_car.pop(car.name))
         return CarMarket.del_car
 
-    def _set_discount(self, car, size_discount=0):
-        car_discount = car.price - car.price * size_discount / 100
-        return car_discount
+    def _set_discount(self, car, size_discount):
+        car.discount = size_discount
 
     def set_discount(self, car, size_discount=0):
         return self._set_discount(car, size_discount)
@@ -27,25 +25,23 @@ class CarMarket:
     def get_sold_car_history(self, seller):
         pass
 
-    # def __return_car(self, car, seller):
-    #     car_return = False
-    #     if car_return:
-    #         print(f"I can't love {car.name}")
-    #         CarMarket.existing_car[f"{seller.name} {seller.surname}"] = [car.name, car.price]
+    def return_car(self, car, seller):
+        car_return = False
+        if car_return:
+            self.add_car(car, seller)
+            CarMarket.existing_car[f"{seller.name} {seller.surname}"][1].append(f"{car.name} returned car")
+        return CarMarket.existing_car[f"{seller.name} {seller.surname}"]
 
     def _get_seller_available_cars(self, seller):
-        if f"{seller.name} {seller.surname}" in CarMarket.existing_car:
-            return CarMarket.existing_car[f"{seller.name} {seller.surname}"]
-        return []
+        if f"{seller.name} {seller.surname}" not in CarMarket.existing_car:
+            return []
+        return CarMarket.existing_car[f"{seller.name} {seller.surname}"]
 
     def get_seller_available_cars(self, seller):
         return self._get_seller_available_cars(seller)
 
-    def _get_car_available_discount(self, car, seller, size_discount=0):
-        has_discount = seller.check_discount(seller.seller_car)
-        if has_discount:
-            return self._set_discount(car, size_discount)
-        return car.price
+    def _get_car_available_discount(self, car):
+        return car.discount
 
     @staticmethod
     def date():
@@ -54,10 +50,10 @@ class CarMarket:
 
 
 class Car:
-    def __init__(self, name, seller, price):
-        self.seller = seller
+    def __init__(self, name, price, discount=0):
         self.price = price
         self.name = name
+        self.discount = discount
 
 
 class Person:
@@ -79,48 +75,51 @@ class Seller(Person):
         self.sold_cars = []
 
     def add_cars(self, cars):
-        self.car_shop.existing_car[self.full_name] = []
+        if self.full_name not in self.car_shop.existing_car:
+            self.car_shop.existing_car[self.full_name] = []
         for car in cars:
             self.car_shop.existing_car[self.full_name].append([car.name, car.price])
 
     def sell(self, car, buyer):  # ??????????? #nayeeeelll
-        if car.name in self.car_park:
-            self.__add_money(self.money, car.price)
+        if [car.name, car.price] in self.car_park:
+            self.money = self.__add_money(self.money, car.price, car.discount)
             self.add_sold_car(car, buyer)
+            self.car_park.remove([car.name, car.price])
 
             return f"{self.name} sell his {car.name} to {buyer.name} and he have already had {self.money}"
         return f"{self.name} haven't already {car.name} and have {self.money}"
 
     @staticmethod
-    def __add_money(where_add, money):
-        where_add += money
+    def __add_money(where_add, money, discount):
+        where_add += money * (100 - discount) / 100
+        return where_add
 
     @staticmethod
-    def __cut_down_money(where_less, money):
-        where_less -= money
+    def __cut_down_money(where_less, money, discount):
+        where_less -= money * (100 - discount) / 100
+        return where_less
 
-    # 3. return_car - ընդունելու է վերադարձի մեքենան։ Այստեղ պետք է նվազի վաճառողի
-    # գումարը, ավլանա գնորդի գումարը, CarMar
-    # ket֊ում փոխվի մեքենայի ստատւսը (պետք է գրվի վերադառձի մասին ինֆօ)։ Լինելու է public method
-    def return_car(self, car, buyer):  # ????????????
+    def return_car(self, car, buyer):
         print("I take back my car")
         self.car_shop.add_car(car, self)
-        self.__cut_down_money(self.money, car.price)
-        self.__add_money(buyer.money, car.price)
-        CarMarket.existing_car[self.full_name][car.name, car.price] = "Warning returned car"  # ewswsws
-        return CarMarket.existing_car[f"{self.name} {self.surname}"]
+        self.money = self.__cut_down_money(self.money, car.price, car.discount)
+        buyer.money = self.__add_money(buyer.money, car.price, car.discount)
+
+        CarMarket.existing_car[self.full_name].append("Warning returned car")
+
+        return CarMarket.existing_car[self.full_name]
 
     def check_discount(self, car):
-        if CarMarket.existing_car[self.full_name][car.name] != car_shop.set_discount(car, size_discount=0):
-            return True
-        return False
+        if car.discount == 0:
+            return False
+        return True
 
     @staticmethod
     def get_car_available_discount(size_discount):
         return size_discount
 
     def add_sold_car(self, car, buyer):
-        self.sold_cars.append((car.name, buyer.name, buyer.surname, buyer.city, self.car_shop.date))
+        self.sold_cars.append((car.name, buyer.name, buyer.surname, buyer.city, self.car_shop.date()))
         return self.sold_cars
 
 
@@ -132,33 +131,42 @@ class Buyer(Person):
     def __init__(self, name, surname, city):
         super().__init__(name, surname, city)
 
-    def buy(self, car,seller):
-        if car.name in seller.car_park[seller.full_name] and self.money > car.price:
-            seller.sell(car, self)
-            self.__cut_down_money(self.money, car.price)
-            self.__add_money(seller.money, car.price)
-            self.add_bought_cars(car, seller)
-            self.__add_money(self.spent_money, car.price)
-        elif car.name in seller.car_park[seller.full_name] and self.money < car.price:
-            return f"{self.name} don't have enough money"
+    def buy(self, car, seller):
+        for i in range(len(seller.car_park)):
+            if [car.name, car.price] in seller.car_park and self.money > car.price:
+                seller.sell(car, self)
+                self.money = self.__cut_down_money(self.money, car.price, car.discount)
+                seller.money = self.__add_money(seller.money, car.price, car.discount)
+                self.bought_car = self.add_bought_cars(car, seller)
+                self.spent_money = self.__add_money(self.spent_money, car.price, car.discount)
+                return f"{self.name} have already had {self.money} and buy {self.bought_car} spent {self.spent_money} dollar"
+            elif car.name in seller.car_park[i] and self.money < car.price:
+                return f"{self.name} don't have enough money"
         return f"{car} don't exist"
 
-    def return_carr(self, car, seller):
+    def return_car(self, car, seller):
         print("sorry I can't love this car")
-        self.__cut_down_money(self.spent_money, car.price)
-        self.__add_money(self.money, car.price)
-        self.__add_money(seller.money, car.price)
-        CarMarket.existing_car[seller.full_name][car.name, car.price] = "Warning returned car"
+        self.spent_money = self.__cut_down_money(self.spent_money, car.price, car.discount)
+        self.money = self.__add_money(self.money, car.price, car.discount)
+        seller.money = self.__add_money(seller.money, car.price, car.discount)
         self.bought_car.pop(car.name)
+        seller.add_cars([car])
+        # CarMarket.existing_car[seller.full_name].append("Warning returned car")
+        print(CarMarket.existing_car[seller.full_name], '-' * 100)
+        for i in range(len(CarMarket.existing_car[seller.full_name])):
+            if CarMarket.existing_car[seller.full_name][i] == [car.name, car.price]:
+                CarMarket.existing_car[seller.full_name][i].append("Warning returned car")
         return CarMarket.existing_car[seller.full_name]
 
     @staticmethod
-    def __add_money(where_add, money):
-        where_add += money
+    def __add_money(where_add, money, discount):
+        where_add = where_add + money * (100 - discount) / 100
+        return where_add
 
     @staticmethod
-    def __cut_down_money(where_less, money):
-        where_less -= money
+    def __cut_down_money(where_less, money, discount):
+        where_less -= money * (100 - discount) / 100
+        return where_less
 
     def add_bought_cars(self, car, seller):
         self.bought_car[car.name] = (seller.name, seller.surname, CarMarket.date())
@@ -168,13 +176,21 @@ class Buyer(Person):
         print(self.bought_car)
 
 
-car = Car("Opel", 'jhon', 3000)
+car = Car("Opel", 3000, 30)
 jhon = Seller('Jhon', 'Smith', "London", [car])
+print('-' * 100)
 print(jhon.car_park)
 car_shop = CarMarket()
-car1 = Car("kia", 'gago', 5000)
+car1 = Car("kia", 5000)  # gago
 car_shop.add_car(car1, jhon)
+print(jhon.car_park)
 robert = Buyer('Robert', "Lee", "Moscow")
-jhon.sell(car1,robert)
-print(robert.buy(car1,jhon))
-print(car_shop.existing_car)
+print('-' * 100)
+# print(jhon.sell(car1,robert))
+print(robert.buy(car, jhon))
+print(jhon.car_park)
+# print(jhon.return_car(car,robert))
+print(jhon.car_park)
+print(robert.return_car(car, jhon))
+print(jhon.sold_cars)
+print(car_shop.get_sold_car_history(jhon))
