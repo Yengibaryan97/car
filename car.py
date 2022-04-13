@@ -1,6 +1,7 @@
 import datetime
 
 
+
 class CarMarket:
     del_car = []
     existing_car = {}
@@ -23,7 +24,7 @@ class CarMarket:
         return self._set_discount(car, size_discount)
 
     def get_sold_car_history(self, seller):
-        pass
+        return f"{seller.sold_cars}"
 
     def return_car(self, car, seller):
         car_return = False
@@ -119,7 +120,7 @@ class Seller(Person):
         return size_discount
 
     def add_sold_car(self, car, buyer):
-        self.sold_cars.append((car.name, buyer.name, buyer.surname, buyer.city, self.car_shop.date()))
+        self.sold_cars.append((car.name, car.price, car.discount, buyer.name, buyer.surname, buyer.city, self.car_shop.date()))
         return self.sold_cars
 
 
@@ -192,5 +193,6 @@ print(jhon.car_park)
 # print(jhon.return_car(car,robert))
 print(jhon.car_park)
 print(robert.return_car(car, jhon))
-print(jhon.sold_cars)
+print(robert.money)
 print(car_shop.get_sold_car_history(jhon))
+
