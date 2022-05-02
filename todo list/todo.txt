@@ -1,0 +1,6 @@
+1. Create Python virtual environment
+2. Install elasticsearch client version 6.0.0
+3. Create python script to connect to elasticsearch with installed client
+4. Get some basic data
+
+
